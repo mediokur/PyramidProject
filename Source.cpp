@@ -187,15 +187,17 @@ void UResizeWindow(GLFWwindow* window, int width, int height)
 // set the shader by Using the Program, bind my vertex arrays and actually draw the triangle, then deactivate the array object
 //any transformation we want to apply to a matrix is done here before the elements are drawn
 void URender() {
-    
+    glEnable(GL_DEPTH_TEST);
+
     //clear the background
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 
     // 1. Scales the object by 2
     glm::mat4 scale = glm::scale(glm::vec3(2.0f, 2.0f, 2.0f));
     // 2. Rotates shape by 15 degrees in the x axis
-    glm::mat4 rotation = glm::rotate(25.0f, glm::vec3(1.0, 0.0f, 0.0f));
+    glm::mat4 rotation = glm::rotate(45.0f, glm::vec3(1.0, 1.0f, 1.0f));
     // 3. Place object at the origin
     glm::mat4 translation = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
     // Model matrix: transformations are applied right-to-left order
@@ -240,13 +242,33 @@ void UCreateMesh(GLMesh& mesh)
     // Specifies Normalized Device Coordinates (x,y,z) and color (r,g,b,a) for triangle vertices
     GLfloat verts[] =
     {
-        // Vertex Positions    // Colors
-    0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f, 1.0f, // Top-Right Vertex 0
-    0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f, 1.0f, // Bottom-Right Vertex 1
-   -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f, 1.0f, // Bottom-Left Vertex 2
-   -0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 1.0f, 1.0f  // Top-Left Vertex 3
+        // Vertex Positions    // Colors (r,g,b,a)
+          0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f, 1.0f, // Top Right Vertex 0
+          0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f, 1.0f, // Bottom Right Vertex 1
+         -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f, 1.0f, // Bottom Left Vertex 2
+         -0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 1.0f, 1.0f, // Top Left Vertex 3
+
+          0.5f, -0.5f, -1.0f,  0.5f, 0.5f, 1.0f, 1.0f, // 4 br  right
+          0.5f,  0.5f, -1.0f,  1.0f, 1.0f, 0.5f, 1.0f, //  5 tl  right
+         -0.5f,  0.5f, -1.0f,  0.2f, 0.2f, 0.5f, 1.0f, //  6 tl  top
+         -0.5f, -0.5f, -1.0f,  1.0f, 0.0f, 1.0f, 1.0f  //  7 bl back
     };
    
+    // Index data to share position data
+    GLushort indices[] = {
+        0, 1, 3,  // Triangle 1
+        1, 2, 3,   // Triangle 2
+        0, 1, 4,  // Triangle 3
+        0, 4, 5,  // Triangle 4
+        0, 5, 6, // Triangle 5
+        0, 3, 6,  // Triangle 6
+        4, 5, 6, // Triangle 7
+        4, 6, 7, // Triangle 8
+        2, 3, 6, // Triangle 9
+        2, 6, 7, // Triangle 10
+        1, 4, 7, // Triangle 11
+        1, 2, 7 // Triangle 12
+    };
 
     //generate my vertex array object so I can bind it to a buffer
     glGenVertexArrays(1, &mesh.vao);
@@ -258,11 +280,7 @@ void UCreateMesh(GLMesh& mesh)
     glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW); //send the data to the gpu
 
    
-    //buffer object for the indices
-    unsigned short indices[] = { 0,1,3, //triangle 1 for 1/2 of a square
-                                 1,2,3       }; //triangle 2 for 1/2 of square
     mesh.nIndices = sizeof(indices) / sizeof(indices[0]);
-
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.vbos[1]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices),indices, GL_STATIC_DRAW);
 
