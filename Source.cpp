@@ -197,14 +197,14 @@ void URender() {
     // 1. Scales the object by 2
     glm::mat4 scale = glm::scale(glm::vec3(2.0f, 2.0f, 2.0f));
     // 2. Rotates shape by 15 degrees in the x axis
-    glm::mat4 rotation = glm::rotate(45.0f, glm::vec3(1.0, 1.0f, 1.0f));
+    glm::mat4 rotation = glm::rotate(10.0f, glm::vec3(0.0, 2.0f, 0.0f));
     // 3. Place object at the origin
     glm::mat4 translation = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
     // Model matrix: transformations are applied right-to-left order
     glm::mat4 model = translation * rotation * scale;
 
     // Transforms the camera
-    glm::mat4 view = glm::translate(glm::vec3(1.0f, 0.0f, -5.0f)); //Moves the camera backwards -3 units in Z
+    glm::mat4 view = glm::translate(glm::vec3(0.0f, 0.0f, -5.0f)); //Moves the camera backwards -3 units in Z
 
     // Creates a perspective projection (field of view, aspect ratio, near plane, and far plane are the four parameters)
     glm::mat4 projection = glm::perspective(45.0f, (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
@@ -240,34 +240,31 @@ void URender() {
 void UCreateMesh(GLMesh& mesh)
 {
     // Specifies Normalized Device Coordinates (x,y,z) and color (r,g,b,a) for triangle vertices
+    // I am going to space out my vertex coordinates in terms of their triangle and then the index they occupy
     GLfloat verts[] =
     {
-        // Vertex Positions    // Colors (r,g,b,a)
-          0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f, 1.0f, // Top Right Vertex 0
-          0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f, 1.0f, // Bottom Right Vertex 1
-         -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f, 1.0f, // Bottom Left Vertex 2
-         -0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 1.0f, 1.0f, // Top Left Vertex 3
+        // x,     y,    z      //r,   g,     b,      a
+          0.0f,  0.5f, 0.0f,   0.12f, 1.0f,  0.98f, 1.0f, // Top of the pyramid, shared by most triangles and index 0
+         -0.5f, -0.5f, -0.5f,  0.14f, 0.95f, 0.65f, 1.0f, // Triangle 1 Index 1  - back triangle because we are negative in z for the bottom vertices
+          0.5f, -0.5f, -0.5f,  0.95f, 0.14f, 0.38f, 1.0f, // Triangle 1 Index 2
+         -0.5f, -0.5f, 0.5f,   0.95f, 0.14f, 0.38f, 1.0f, // Triangle 2 Index 3  
+          0.5f, -0.5f, 0.5f,   0.14f, 0.95f, 0.47f, 1.0f, // Triangle 2 Index 4 
 
-          0.5f, -0.5f, -1.0f,  0.5f, 0.5f, 1.0f, 1.0f, // 4 br  right
-          0.5f,  0.5f, -1.0f,  1.0f, 1.0f, 0.5f, 1.0f, //  5 tl  right
-         -0.5f,  0.5f, -1.0f,  0.2f, 0.2f, 0.5f, 1.0f, //  6 tl  top
-         -0.5f, -0.5f, -1.0f,  1.0f, 0.0f, 1.0f, 1.0f  //  7 bl back
+          //we don't need anymore vertex points. We have four points that establish the square base of our pyramid, indexes 1-4
+        // and two of those points are the same x and y location, simply moved forward/backward in the z direction
+        // and then our point that is the top of the pyramid, all we have to do is use all of those points to create the triangles in the index buffer object
+        // please look at the reference drawing in the resource files folder to see how I grouped it all together
+
     };
    
     // Index data to share position data
     GLushort indices[] = {
-        0, 1, 3,  // Triangle 1
-        1, 2, 3,   // Triangle 2
-        0, 1, 4,  // Triangle 3
-        0, 4, 5,  // Triangle 4
-        0, 5, 6, // Triangle 5
-        0, 3, 6,  // Triangle 6
-        4, 5, 6, // Triangle 7
-        4, 6, 7, // Triangle 8
-        2, 3, 6, // Triangle 9
-        2, 6, 7, // Triangle 10
-        1, 4, 7, // Triangle 11
-        1, 2, 7 // Triangle 12
+        0, 2, 1,  // Triangle 1 - back facing
+        0, 3, 4,  // Triangle 2 - front facing
+        0, 1, 3,  // Triangle 3 - negative x facing
+        0, 4, 2,  // Triangle 4 - positive x facing
+        1, 2, 3, // Triangle 5 - bottom square negative z half
+        2, 3, 4,  // Triangle 6 - bottom square positive z half
     };
 
     //generate my vertex array object so I can bind it to a buffer
