@@ -56,10 +56,15 @@ const GLchar* vertexShaderSource = GLSL(440,
 layout(location = 0) in vec3 position; // Vertex data from Vertex Attrib Pointer 0
 layout(location = 1) in vec4 color;  // Color data from Vertex Attrib Pointer 1
 out vec4 vertexColor; // variable to transfer color data to the fragment shader
-uniform mat4 shaderTransform; // 4x4 matrix variable for transforming vertex data
+
+//Global variables for the  transform matrices
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
 void main()
 {
-    gl_Position = shaderTransform * vec4(position, 1.0f); // transforms vertex data using matrix
+    gl_Position = projection * view * model * vec4(position, 1.0f); // transforms vertex data using matrix
     vertexColor = color; // references incoming color data
 }
 );
@@ -187,24 +192,32 @@ void URender() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    // 1. Scales the shape down by half of its original size in all 3 dimensions
-    glm::mat4 scale = glm::scale(glm::vec3(0.5f, 0.5f, 0.5f));
+    // 1. Scales the object by 2
+    glm::mat4 scale = glm::scale(glm::vec3(2.0f, 2.0f, 2.0f));
+    // 2. Rotates shape by 15 degrees in the x axis
+    glm::mat4 rotation = glm::rotate(25.0f, glm::vec3(1.0, 0.0f, 0.0f));
+    // 3. Place object at the origin
+    glm::mat4 translation = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
+    // Model matrix: transformations are applied right-to-left order
+    glm::mat4 model = translation * rotation * scale;
 
-    // 2. Rotates shape by 45 degrees on the z axis
-    glm::mat4 rotation = glm::rotate(45.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+    // Transforms the camera
+    glm::mat4 view = glm::translate(glm::vec3(1.0f, 0.0f, -5.0f)); //Moves the camera backwards -3 units in Z
 
-    // 3. Translates by 0.5 in the y axis
-    glm::mat4 translation = glm::translate(glm::vec3(0.0f, 0.5f, 0.0f));
-
-    // Transformations are applied right-to-left order
-    glm::mat4 transformation = translation * rotation * scale;
+    // Creates a perspective projection (field of view, aspect ratio, near plane, and far plane are the four parameters)
+    glm::mat4 projection = glm::perspective(45.0f, (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
 
     // set the shader being used
     glUseProgram(gProgramId);
 
-    // Sends transform information to the Vertex shader
-    GLuint transformLocation = glGetUniformLocation(gProgramId, "shaderTransform");
-    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, glm::value_ptr(transformation));
+    // Retrieves and passes transform matrices to the Shader program
+    GLint modelLoc = glGetUniformLocation(gProgramId, "model");
+    GLint viewLoc = glGetUniformLocation(gProgramId, "view");
+    GLint projLoc = glGetUniformLocation(gProgramId, "projection");
+
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
     //activate my vertex buffer object by binding the array object its related to
     glBindVertexArray(gMesh.vao);
