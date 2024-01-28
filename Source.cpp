@@ -2,10 +2,16 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <cstdlib>          // EXIT_FAILURE
 
 using namespace std; // Uses the standard namespace
+/*Shader program Macro*/
+#ifndef GLSL
+#define GLSL(Version, Source) "#version " #Version " core \n" #Source
+#endif
 
 // Unnamed namespace
 namespace
@@ -45,26 +51,30 @@ void URender();
 void UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSource, unsigned int& programId);
 void UDestroyShaderProgram(unsigned int programId);
 
-// Vertex Shader Program Source Code
-const char* vertexShaderSource = "#version 440 core\n"
-"layout (location = 0) in vec3 aPos;\n"
-"layout (location = 1) in vec4 colorFromVBO;\n"
-"out vec4 colorFromVS;\n"
-"void main()\n"
-"{\n"
-"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-"   colorFromVS = colorFromVBO;\n"
-"}\n\0";
+/* Vertex Shader Source Code*/
+const GLchar* vertexShaderSource = GLSL(440,
+layout(location = 0) in vec3 position; // Vertex data from Vertex Attrib Pointer 0
+layout(location = 1) in vec4 color;  // Color data from Vertex Attrib Pointer 1
+out vec4 vertexColor; // variable to transfer color data to the fragment shader
+uniform mat4 shaderTransform; // 4x4 matrix variable for transforming vertex data
+void main()
+{
+    gl_Position = shaderTransform * vec4(position, 1.0f); // transforms vertex data using matrix
+    vertexColor = color; // references incoming color data
+}
+);
 
 
-// Fragment Shader Program Source Code
-const char* fragmentShaderSource = "#version 440 core\n"
-"in vec4 colorFromVS;\n"
-"out vec4 FragColor;\n"
-"void main()\n"
-"{\n"
-"   FragColor = colorFromVS;\n"
-"}\n\0";
+/* Fragment Shader Source Code*/
+const GLchar* fragmentShaderSource = GLSL(440,
+    in vec4 vertexColor; // Variable to hold incoming color data from vertex shader
+out vec4 fragmentColor;
+
+void main()
+{
+    fragmentColor = vec4(vertexColor);
+}
+);
 
 // main function. Entry point to the OpenGL program
 int main(int argc, char* argv[])
@@ -170,14 +180,31 @@ void UResizeWindow(GLFWwindow* window, int width, int height)
 
 //function for actually rendering, in this I set my background color and ensure to clear the buffer
 // set the shader by Using the Program, bind my vertex arrays and actually draw the triangle, then deactivate the array object
+//any transformation we want to apply to a matrix is done here before the elements are drawn
 void URender() {
     
     //clear the background
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    // 1. Scales the shape down by half of its original size in all 3 dimensions
+    glm::mat4 scale = glm::scale(glm::vec3(0.5f, 0.5f, 0.5f));
+
+    // 2. Rotates shape by 45 degrees on the z axis
+    glm::mat4 rotation = glm::rotate(45.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+
+    // 3. Translates by 0.5 in the y axis
+    glm::mat4 translation = glm::translate(glm::vec3(0.0f, 0.5f, 0.0f));
+
+    // Transformations are applied right-to-left order
+    glm::mat4 transformation = translation * rotation * scale;
+
     // set the shader being used
     glUseProgram(gProgramId);
+
+    // Sends transform information to the Vertex shader
+    GLuint transformLocation = glGetUniformLocation(gProgramId, "shaderTransform");
+    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, glm::value_ptr(transformation));
 
     //activate my vertex buffer object by binding the array object its related to
     glBindVertexArray(gMesh.vao);
@@ -200,32 +227,13 @@ void UCreateMesh(GLMesh& mesh)
     // Specifies Normalized Device Coordinates (x,y,z) and color (r,g,b,a) for triangle vertices
     GLfloat verts[] =
     {
-      // The two triangles will be drawn using indices
-      // Left triangle indices: 0, 1, 2
-      // Right triangle indices: 3, 2, 4
-
-      // index 0
-        -0.5f, 0.0f, 0.0f,      // top-first_third of the screen
-        1.0f, 0.0f, 0.0f, 1.0f, // red
-
-        // index 1
-        -1.0f, -1.0f, 0.0f,     // bottom-left of the screen
-        0.0f, 0.0f, 1.0f, 1.0f, // blue
-
-        // index 2
-        0.0f, -1.0f, 0.0f,      // bottom-center of the screen
-        0.0f, 1.0f, 0.0f, 1.0f, // green
-
-        // index 3
-        0.5f, 0.0f, 0.0f,       // top-second_third of the screen
-        1.0f, 0.0f, 0.0f, 1.0f, // red
-
-        // index 4
-        1.0f, -1.0f, 0.0f,      // bottom-right of the screen
-        0.0f, 1.0f, 0.0f, 1.0f  // green
+        // Vertex Positions    // Colors
+    0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f, 1.0f, // Top-Right Vertex 0
+    0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f, 1.0f, // Bottom-Right Vertex 1
+   -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f, 1.0f, // Bottom-Left Vertex 2
+   -0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 1.0f, 1.0f  // Top-Left Vertex 3
     };
-    //this holds the amount of vertices we are drawing, so that it can be drawing later when the object is being drawn and opengl needs to know how large the buffer is
-    mesh.nIndices = 6;
+   
 
     //generate my vertex array object so I can bind it to a buffer
     glGenVertexArrays(1, &mesh.vao);
@@ -236,8 +244,10 @@ void UCreateMesh(GLMesh& mesh)
     glBindBuffer(GL_ARRAY_BUFFER,mesh.vbos[0]); //activates
     glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW); //send the data to the gpu
 
+   
     //buffer object for the indices
-    unsigned short indices[] = { 0,1,2,3,2,4 }; //index two get used twice as the shared vertex
+    unsigned short indices[] = { 0,1,3, //triangle 1 for 1/2 of a square
+                                 1,2,3       }; //triangle 2 for 1/2 of square
     mesh.nIndices = sizeof(indices) / sizeof(indices[0]);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.vbos[1]);
